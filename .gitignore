@@ -1,0 +1,14 @@
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.Trashes
+
+/build
+/dist
+/MANIFEST
+*.pyc
+*.egg
+.tox
+*.class
