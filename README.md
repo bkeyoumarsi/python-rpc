@@ -11,7 +11,7 @@ You can install python-rpc via pip with:
 
     pip install python-rpc
 
-Alternatively, you can clone the EasyPost python client repository:
+Alternatively, you can clone the python rpc client repository:
 
     git clone https://github.com/bkeyoumarsi/python-rpc
 
