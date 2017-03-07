@@ -23,11 +23,4 @@ Import the RPC client:
 
     import pyrpc
 
-TODO:
------
-
-- Add proper program and procedure passing
-- Add auth handler to the client
-- Add documetation to the client package
-- Add to pypi repository
 

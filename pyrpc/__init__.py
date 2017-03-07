@@ -1,9 +1,28 @@
+# -*- coding: utf-8 -*-
+"""Simple Python RPC client.
+
+This module demonstrates documentation as specified by the `Google Python
+Style Guide`_. Docstrings may extend over multiple lines. Sections are created
+with a section header and a colon followed by a block of indented text.
+
+Example:
+        c = Client('127.0.0.1', 400001, 1, 2049)
+        c.call(1, [(six.b('test-arg'), c.packer.pack_string)])
+
+Todo:
+    * Refine the program and arg passing to the client
+    * Add auth handler to the client
+    * Add documetation to the client package
+    * Add to pypi repository
+"""
+
 import os
-import six
-import socket
 import xdrlib
+import socket
+import six
 
 from random import randint
+
 #
 # RPC Definition
 #
@@ -28,6 +47,14 @@ RPC_MISMATCH = 0
 AUTH_ERROR = 1
 
 class Client(object):
+    """A simple RPC client.
+
+    Args:
+        address (str): RPC server address.
+        rpc_program (int): RPC program to target.
+        rpc_version (int): RPC program version.
+        port (int): Port number for the RPC server.
+    """
 
     def __init__(self, address, rpc_program, rpc_version, port):
         self.packer = xdrlib.Packer()
@@ -39,53 +66,53 @@ class Client(object):
         self.cred = None
         self.verf = None
 
-        self.init_socket()
-        self.init_xid()
+        self._init_socket()
+        self._init_xid()
 
-    def init_socket(self):
+    def _init_socket(self):
         try:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.sock.connect((self.address, self.port))
         except socket.error:
             raise Exception('Failed to establish a connection with the RPC server')
 
-    def init_xid(self):
+    def _init_xid(self):
         self.xid = randint(0, 4096)
 
-    def make_xid(self):
+    def _make_xid(self):
         self.xid += 1
 
-    def make_cred(self):
+    def _make_cred(self):
         if self.cred is None:
             self.cred = (AUTH_NULL, six.b(''))
         return self.cred
 
-    def make_verf(self):
+    def _make_verf(self):
         if self.verf is None:
             self.verf = (AUTH_NULL, six.b(''))
         return self.verf
 
-    def pack_auth(self, auth):
+    def _pack_auth(self, auth):
         flavor, stuff = auth
         self.packer.pack_enum(flavor)
         self.packer.pack_opaque(stuff)
 
-    def pack_callheader(self, xid, prog, vers, proc, cred, verf):
+    def _pack_callheader(self, xid, prog, vers, proc, cred, verf):
         self.packer.pack_uint(xid)
         self.packer.pack_enum(CALL)
         self.packer.pack_uint(RPCVERSION)
         self.packer.pack_uint(prog)
         self.packer.pack_uint(vers)
         self.packer.pack_uint(proc)
-        self.pack_auth(cred)
-        self.pack_auth(verf)
+        self._pack_auth(cred)
+        self._pack_auth(verf)
 
-    def unpack_auth(self):
+    def _unpack_auth(self):
         flavor = self.unpacker.unpack_enum()
         stuff = self.unpacker.unpack_opaque()
         return (flavor, stuff)
 
-    def unpack_replyheader(self):
+    def _unpack_replyheader(self):
         xid = self.unpacker.unpack_uint()
         mtype = self.unpacker.unpack_enum()
         if mtype != REPLY:
@@ -107,7 +134,7 @@ class Client(object):
         if stat != MSG_ACCEPTED:
             raise Exception(
                 ('Neither MSG_DENIED nor MSG_ACCEPTED: %r') % (stat,))
-        verf = self.unpack_auth()
+        verf = self._unpack_auth()
         stat = self.unpacker.unpack_enum()
         if stat == PROG_UNAVAIL:
             raise Exception(('call failed: PROG_UNAVAIL'))
@@ -124,12 +151,12 @@ class Client(object):
             raise Exception(('call failed: %r') % (stat,))
         return xid, verf
 
-    def init_call(self, proc, args):
-        self.make_xid()
+    def _init_call(self, proc, args):
+        self._make_xid()
         self.packer.reset()
-        cred = self.make_cred()
-        verf = self.make_verf()
-        self.pack_callheader(self.xid, self.prog, self.vers, proc, cred, verf)
+        cred = self._make_cred()
+        verf = self._make_verf()
+        self._pack_callheader(self.xid, self.prog, self.vers, proc, cred, verf)
 
         for arg, func in args:
             func(arg)
@@ -180,19 +207,23 @@ class Client(object):
 
     def _make_call(self, proc, args):
         self.packer.reset()
-        xid, call = self.init_call(proc, args)
+        xid, call = self._init_call(proc, args)
         self._sendrecord(call)
         reply = self._recvrecord()
         self.unpacker.reset(reply)
-        xid, verf = self.unpack_replyheader()
+        xid, verf = self._unpack_replyheader()
 
-    def call(self, procedure, args):
+    def call(self, procedure, args=[]):
+        """Initiated and make RPC call to the server.
+
+        Args:
+            procedure (int): the RPC procedure to call.
+            args (list, optional): List of tuples of arguments
+                and their appropriate packers.
+
+        """
         self._make_call(procedure, args)
         res = self.unpacker.unpack_uint()
         if res != SUCCESS:
             raise Exception(os.strerror(res))
 
-
-# Example
-# c = Client('127.0.0.1', 400001, 1, 2049)
-# c.call(1, [(six.b('test-arg'), c.packer.pack_string)])
